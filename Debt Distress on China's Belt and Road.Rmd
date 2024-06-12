@@ -1,0 +1,118 @@
+---
+title: "Debt Distress on China's Belt and Road"
+author: "Felix Meven"
+date: "2024-05-31"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+#Load Required Libraries:
+
+```{r}
+# Install necessary packages if not already installed
+install.packages(c("dplyr", "ggplot2", "readr", "lmtest", "sandwich"))
+
+# Load libraries
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(lmtest)
+library(sandwich)
+
+```
+
+#Load Data:
+
+```{r}
+# Load the dataset
+data <- read_csv("china_lending.csv")
+
+# Preview the data
+head(data)
+
+```
+
+#Descriptive Statistics:
+
+```{r}
+# Summary statistics
+summary(data)
+
+# Calculate total lending, number of restructurings, and number of rescue loans
+total_lending <- sum(data$lending_amount, na.rm = TRUE)
+num_restructurings <- sum(data$restructuring, na.rm = TRUE)
+num_rescue_loans <- sum(data$rescue_loan, na.rm = TRUE)
+
+cat("Total Lending: ", total_lending, "\n")
+cat("Number of Restructurings: ", num_restructurings, "\n")
+cat("Number of Rescue Loans: ", num_rescue_loans, "\n")
+
+```
+
+#Debt Distress Identification:
+
+```{r}
+# Identify periods of debt distress
+data <- data %>%
+  mutate(debt_distress = ifelse(debt_service_ratio > 30 | external_debt > 50, 1, 0))
+
+# Summarize debt distress occurrences
+debt_distress_summary <- data %>%
+  group_by(country) %>%
+  summarize(debt_distress_periods = sum(debt_distress, na.rm = TRUE))
+
+print(debt_distress_summary)
+
+```
+
+#Econometric Analysis:
+
+```{r}
+# Econometric model to determine the likelihood of debt distress
+model <- lm(debt_distress ~ gdp_growth + external_debt + debt_service_ratio + restructuring + rescue_loan, data = data)
+
+# Summary of the model
+summary(model)
+
+# Robust standard errors
+coeftest(model, vcov = vcovHC(model, type = "HC1"))
+
+```
+
+#Visualizations:
+
+```{r}
+# Plot debt distress over time
+ggplot(data, aes(x = year, y = debt_distress, color = country)) +
+  geom_line() +
+  labs(title = "Debt Distress Over Time", x = "Year", y = "Debt Distress")
+
+# Plot the types of interventions (restructuring vs. rescue loans)
+ggplot(data, aes(x = year, fill = factor(intervention_type))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Types of Interventions Over Time", x = "Year", fill = "Intervention Type")
+
+```
